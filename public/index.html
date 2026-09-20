@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Онлайн-викторина</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>🎯 Онлайн-викторина</h1>
+    <p class="subtitle">Создайте комнату или присоединитесь по коду</p>
+
+    <div class="card">
+      <label>Ваше имя</label>
+      <input id="name" type="text" placeholder="Например, Алиса" maxlength="20" />
+
+      <label>Выберите викторину</label>
+      <select id="quizSelect">
+        <option value="general">Общие знания</option>
+        <option value="it">IT и программирование</option>
+      </select>
+
+      <button id="createBtn" class="primary">Создать комнату</button>
+    </div>
+
+    <div class="card">
+      <label>Код комнаты</label>
+      <input id="code" type="text" placeholder="ABC12" maxlength="5"
+             style="text-transform: uppercase" />
+      <button id="joinBtn">Войти в комнату</button>
+    </div>
+
+    <p id="error" class="error"></p>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/socket.js"></script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Игровая комната</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div class="container">
+
+    <!-- Лобби -->
+    <section id="lobby" class="screen">
+      <h1>Комната <span id="roomCode" class="code"></span></h1>
+      <p class="subtitle">Поделитесь кодом с друзьями</p>
+      <h3>Игроки:</h3>
+      <ul id="players" class="players"></ul>
+      <button id="startBtn" class="primary hidden">Начать игру</button>
+      <p class="hint" id="waitHint">Ожидаем создателя…</p>
+    </section>
+
+    <!-- Вопрос -->
+    <section id="question" class="screen hidden">
+      <div class="q-header">
+        <span id="qCounter"></span>
+        <span id="timer" class="timer"></span>
+      </div>
+      <h2 id="qText"></h2>
+      <img id="qImage" class="q-image hidden" alt="" />
+      <div id="options" class="options"></div>
+      <p id="answerStatus" class="hint"></p>
+    </section>
+
+    <!-- Reveal -->
+    <section id="reveal" class="screen hidden">
+      <h2>Промежуточные результаты</h2>
+      <ol id="leaderboard" class="leaderboard"></ol>
+    </section>
+
+    <!-- Финал -->
+    <section id="final" class="screen hidden">
+      <h1>🏆 Игра завершена</h1>
+      <ol id="finalBoard" class="leaderboard"></ol>
+      <button id="restartBtn" class="primary hidden">Играть снова</button>
+      <p class="hint" id="restartHint">Ожидаем создателя…</p>
+      <a href="/" class="link">← Вернуться на главную</a>
+    </section>
+
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/game.js"></script>
+</body>
+</html>
