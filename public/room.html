@@ -4,23 +4,25 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Игровая комната</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="stylesheet" href="/css/style.css" />
 </head>
 <body>
   <div class="container">
 
     <!-- Лобби -->
-    <section id="lobby" class="screen">
+        <section id="lobby" class="screen">
       <h1>Комната <span id="roomCode" class="code"></span></h1>
       <p class="subtitle">Поделитесь кодом с друзьями</p>
       <h3>Игроки:</h3>
       <ul id="players" class="players"></ul>
       <button id="startBtn" class="primary hidden">Начать игру</button>
       <p class="hint" id="waitHint">Ожидаем создателя…</p>
+      <button id="leaveBtn" style="margin-top: 12px;">← Выйти из комнаты</button>
     </section>
 
     <!-- Вопрос -->
-    <section id="question" class="screen hidden">
+     <section id="question" class="screen hidden">
       <div class="q-header">
         <span id="qCounter"></span>
         <span id="timer" class="timer"></span>
@@ -29,6 +31,11 @@
       <img id="qImage" class="q-image hidden" alt="" />
       <div id="options" class="options"></div>
       <p id="answerStatus" class="hint"></p>
+
+      <div id="miniLeaderboard" class="mini-leaderboard hidden">
+        <div class="mini-title">🏆 Игроки</div>
+        <ol id="miniLeaderboardList"></ol>
+      </div>
     </section>
 
     <!-- Reveal -->
@@ -38,7 +45,8 @@
     </section>
 
     <!-- Финал -->
-    <section id="final" class="screen hidden">
+      <section id="final" class="screen hidden">
+      <canvas id="confettiCanvas"></canvas>
       <h1>🏆 Игра завершена</h1>
       <ol id="finalBoard" class="leaderboard"></ol>
       <button id="restartBtn" class="primary hidden">Играть снова</button>

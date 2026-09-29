@@ -6,20 +6,7 @@ const codeInput = $('code');
 const quizSelect = $('quizSelect');
 const errorEl = $('error');
 
-window.addEventListener('load', () => {
-  const lastCode = localStorage.getItem('roomCode');
-  const lastId = localStorage.getItem('playerId');
-  if (lastCode && lastId) {
-    socket.emit('rejoin', { code: lastCode, playerId: lastId }, res => {
-      if (res && res.ok) {
-        location.href = `/room.html?code=${lastCode}`;
-      } else {
-        localStorage.removeItem('roomCode');
-        localStorage.removeItem('playerId');
-      }
-    });
-  }
-});
+
 
 function showError(msg) {
   errorEl.textContent = msg;

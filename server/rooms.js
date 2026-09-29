@@ -2,8 +2,9 @@ const quizzes = require('./quizzes.json');
 
 const rooms = new Map();
 
-const QUESTION_TIME = 15000; // 15 секунд на ответ
-const REVEAL_TIME = 4000;    // 4 секунды показываем правильный ответ
+const QUESTION_TIME = 15000;       // 15 секунд на ответ
+const REVEAL_TIME = 4000;          // 4 секунды показываем лидерборд
+const ANSWER_REVEAL_TIME = 5000;   // 5 секунд показываем правильный ответ
 
 function genCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -16,9 +17,37 @@ function genCode() {
   return code;
 }
 
+function shuffle(arr) {
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
 function createRoom(hostId, hostName, quizId) {
   const code = genCode();
-  const quiz = quizzes.find(q => q.id === quizId) || quizzes[0];
+  const baseQuiz = quizzes.find(q => q.id === quizId) || quizzes[0];
+
+  // Перемешиваем вопросы, берём 10 случайных, затем перемешиваем варианты
+  const QUESTIONS_PER_GAME = 10;
+  const shuffledQuestions = shuffle(baseQuiz.questions)
+    .slice(0, QUESTIONS_PER_GAME)
+    .map(q => {
+      const correctText = q.options[q.correct];
+      const shuffledOptions = shuffle(q.options);
+      return {
+        ...q,
+        options: shuffledOptions,
+        correct: shuffledOptions.indexOf(correctText),
+      };
+    });
+
+  const quiz = {
+    ...baseQuiz,
+    questions: shuffledQuestions,
+  };
 
   const room = {
     code,
@@ -83,13 +112,16 @@ function emitQuestion(room, io) {
 
   [...room.players.values()].forEach(p => (p.lastAnswer = null));
 
-  io.to(room.code).emit('question', {
+   io.to(room.code).emit('question', {
     index: room.currentQ,
     total: room.quiz.questions.length,
     text: q.text,
     image: q.image || null,
     options: q.options,
     timeLimit: QUESTION_TIME,
+    players: [...room.players.values()]
+      .map(p => ({ id: p.id, name: p.name, score: p.score }))
+      .sort((a, b) => b.score - a.score),
   });
 
   clearTimeout(room.timer);
@@ -125,33 +157,50 @@ function submitAnswer(code, playerId, optionIndex, io) {
     name: player.name,
     points,
     correct,
+    players: [...room.players.values()]
+      .map(p => ({ id: p.id, name: p.name, score: p.score }))
+      .sort((a, b) => b.score - a.score),
   });
 }
 
 function revealAnswer(room, io) {
   clearTimeout(room.timer);
-  room.state = 'reveal';
 
   const q = room.quiz.questions[room.currentQ];
-  const leaderboard = [...room.players.values()]
-    .map(p => ({ id: p.id, name: p.name, score: p.score, streak: p.streak }))
-    .sort((a, b) => b.score - a.score);
 
-  io.to(room.code).emit('reveal', {
+  // ─── Фаза 1: показываем правильный ответ 5 секунд ───
+   room.state = 'answer_reveal';
+  io.to(room.code).emit('answer_reveal', {
     correctIndex: q.correct,
-    leaderboard,
-    isLast: room.currentQ === room.quiz.questions.length - 1,
+    players: [...room.players.values()]
+      .map(p => ({ id: p.id, name: p.name, score: p.score }))
+      .sort((a, b) => b.score - a.score),
   });
 
   room.timer = setTimeout(() => {
-    if (room.currentQ < room.quiz.questions.length - 1) {
-      room.currentQ += 1;
-      emitQuestion(room, io);
-    } else {
-      room.state = 'finished';
-      io.to(room.code).emit('game_over', { leaderboard });
-    }
-  }, REVEAL_TIME);
+    // ─── Фаза 2: показываем лидерборд 4 секунды ───
+    room.state = 'reveal';
+
+    const leaderboard = [...room.players.values()]
+      .map(p => ({ id: p.id, name: p.name, score: p.score, streak: p.streak }))
+      .sort((a, b) => b.score - a.score);
+
+    io.to(room.code).emit('reveal', {
+      correctIndex: q.correct,
+      leaderboard,
+      isLast: room.currentQ === room.quiz.questions.length - 1,
+    });
+
+    room.timer = setTimeout(() => {
+      if (room.currentQ < room.quiz.questions.length - 1) {
+        room.currentQ += 1;
+        emitQuestion(room, io);
+      } else {
+        room.state = 'finished';
+        io.to(room.code).emit('game_over', { leaderboard });
+      }
+    }, REVEAL_TIME);
+  }, ANSWER_REVEAL_TIME);
 }
 
 function resetRoom(code, byId, io) {

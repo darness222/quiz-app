@@ -2,49 +2,87 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(-45deg, #667eea, #764ba2, #6b8dd6, #8e5cb8);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
   min-height: 100vh;
   color: #222;
   padding: 20px;
 }
 
+@keyframes gradientShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
 .container {
   max-width: 720px;
   margin: 0 auto;
 }
 
-h1, h2, h3 { color: #fff; margin-bottom: 10px; }
-h1 { font-size: 28px; }
-h2 { font-size: 22px; }
+h1, h2, h3 {
+  color: #fff;
+  margin-bottom: 10px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+h1 {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+h2 {
+  font-size: 24px;
+  font-weight: 700;
+}
 .subtitle { color: rgba(255,255,255,0.8); margin-bottom: 20px; }
 
 .card {
-  background: #fff;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   padding: 20px;
-  border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  border-radius: 20px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
   margin-bottom: 16px;
+  animation: fadeInUp 0.5s ease;
 }
 
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 label {
   display: block;
   font-size: 14px;
   font-weight: 600;
   margin-bottom: 6px;
-  color: #555;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 input, select {
   width: 100%;
   padding: 12px 14px;
   font-size: 16px;
-  border: 2px solid #e0e0e0;
-  border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 12px;
   margin-bottom: 14px;
   outline: none;
-  transition: border-color 0.2s;
+  transition: all 0.2s;
+  background: rgba(255, 255, 255, 0.9);
+  color: #222;
 }
-input:focus, select:focus { border-color: #667eea; }
+input:focus, select:focus {
+  border-color: #fff;
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.25);
+}
 
 button {
   width: 100%;
@@ -64,8 +102,38 @@ button:active { transform: scale(0.98); }
 button.primary {
   background: linear-gradient(135deg, #667eea, #764ba2);
   color: #fff;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+  transition: transform 0.15s, box-shadow 0.2s;
 }
-button.primary:hover { opacity: 0.9; }
+button.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(102, 126, 234, 0.6);
+}
+button.primary:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+button.primary::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.35),
+    transparent
+  );
+  transition: left 0.6s;
+}
+button.primary:hover::after {
+  left: 100%;
+}
 
 .hidden { display: none !important; }
 
@@ -149,6 +217,8 @@ button.primary:hover { opacity: 0.9; }
 
 /* Лидерборд */
 .leaderboard {
+  position: relative;
+  z-index: 60;
   background: #fff;
   border-radius: 16px;
   padding: 20px 30px;
@@ -168,4 +238,143 @@ button.primary:hover { opacity: 0.9; }
   text-decoration: none;
   opacity: 0.8;
 }
-.link:hover { opacity: 1; }
+.link:hover { opacity: 1; }/* ─── Мини-таблица игроков ─────────────────── */
+.mini-leaderboard {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  background: rgba(255, 255, 255, 0.97);
+  border-radius: 14px;
+  padding: 10px 14px;
+  min-width: 170px;
+  max-width: 240px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3);
+  font-size: 14px;
+  z-index: 100;
+  animation: miniSlideIn 0.3s ease;
+}
+
+@keyframes miniSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mini-title {
+  font-weight: 800;
+  font-size: 13px;
+  color: #667eea;
+  margin-bottom: 6px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.mini-leaderboard ol {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.mini-leaderboard li {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px solid #f0f0f0;
+  gap: 10px;
+  align-items: center;
+}
+
+.mini-leaderboard li:last-child {
+  border-bottom: none;
+}
+
+.mini-leaderboard .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #333;
+  font-size: 14px;
+}
+
+.mini-leaderboard .score {
+  font-weight: 700;
+  color: #667eea;
+  flex-shrink: 0;
+  font-size: 14px;
+}
+
+.mini-leaderboard li.me .name {
+  color: #000;
+  font-weight: 800;
+}
+
+.mini-leaderboard li.me {
+  background: rgba(102, 126, 234, 0.08);
+  border-radius: 6px;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+@media (max-width: 520px) {
+  .mini-leaderboard {
+    right: 8px;
+    bottom: 8px;
+    font-size: 12px;
+    min-width: 130px;
+    padding: 8px 10px;
+  }
+  .mini-leaderboard .name,
+  .mini-leaderboard .score {
+    font-size: 12px;
+  }
+}
+
+/* ─── Канвас для конфетти ───────────────── */
+#confettiCanvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+  z-index: 50;
+}
+/* ─── Финальный экран ─────────────────── */
+#final {
+  padding-top: 20px;
+  padding-bottom: 60px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+#final h1 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+#final .leaderboard {
+  width: 100%;
+  max-width: 600px;
+  margin-bottom: 16px;
+}
+
+#final button,
+#final .hint,
+#final .link {
+  max-width: 600px;
+  width: 100%;
+}
+
+#final #restartBtn {
+  margin-top: 8px;
+}
