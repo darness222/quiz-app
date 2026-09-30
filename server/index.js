@@ -105,7 +105,7 @@ io.on('connection', socket => {
     io.to(code).emit('lobby_update', [...room.players.values()]);
   });
 
-  socket.on('disconnect', () => {
+    socket.on('disconnect', () => {
     console.log('❌ disconnected:', socket.id);
     const playerId = socket.data.playerId;
     const roomCode = socket.data.roomCode;
@@ -113,10 +113,27 @@ io.on('connection', socket => {
     const room = getRoom(roomCode);
     if (!room) return;
     const p = room.players.get(playerId);
-    if (p) {
+    if (!p) return;
+
+    // Небольшая задержка — даём новому сокету время подключиться
+    setTimeout(() => {
+      // Проверяем, есть ли ещё активные сокеты этого игрока
+      let stillConnected = false;
+      for (const [, s] of io.of('/').sockets) {
+        if (s.data.playerId === playerId && s.data.roomCode === roomCode) {
+          stillConnected = true;
+          break;
+        }
+      }
+
+      if (stillConnected) {
+        console.log('ℹ️ у игрока ещё есть активный сокет — оставляем online');
+        return;
+      }
+
       p.connected = false;
       io.to(room.code).emit('lobby_update', [...room.players.values()]);
-    }
+    }, 1500);
   });
 });
 
