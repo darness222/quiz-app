@@ -10,12 +10,18 @@ const {
   submitAnswer,
   resetRoom,
   getRoom,
+  publicPlayers,
   rooms,
+  QUESTION_TIME,
 } = require('./rooms');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: '*' } });
+const io = new Server(server, {
+  cors: { origin: '*' },
+  pingTimeout: 10000,
+  pingInterval: 5000,
+});
 
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
@@ -38,6 +44,7 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 io.on('connection', socket => {
+  socket.data.connectedAt = Date.now();
   console.log('🔌 connected:', socket.id);
 
   socket.on('create_room', ({ name, quizId }, cb) => {
@@ -63,7 +70,12 @@ io.on('connection', socket => {
     socket.data.roomCode = code;
     socket.join(code);
     console.log('👤 joined:', pid, 'в комнату', code);
-    io.to(code).emit('lobby_update', res.players);
+
+    const room = getRoom(code);
+    io.to(code).emit('lobby_update', {
+      players: publicPlayers(room),
+      hostId: room.hostId,
+    });
     cb({ ok: true, code, playerId: pid });
   });
 
@@ -94,18 +106,56 @@ io.on('connection', socket => {
     player.connected = true;
     socket.join(code);
 
-    cb({
+    const snapshot = {
       ok: true,
       state: room.state,
       currentQ: room.currentQ,
+      hostId: room.hostId,
       player: { id: player.id, name: player.name, score: player.score },
-      players: [...room.players.values()],
-    });
+      players: publicPlayers(room),
+    };
 
-    io.to(code).emit('lobby_update', [...room.players.values()]);
+    if (room.state === 'question') {
+      const q = room.quiz.questions[room.currentQ];
+      const elapsed = Date.now() - room.questionStartAt;
+      const left = Math.max(0, QUESTION_TIME - elapsed);
+      snapshot.question = {
+        index: room.currentQ,
+        total: room.quiz.questions.length,
+        text: q.text,
+        image: q.image || null,
+        options: q.options,
+        timeLimit: left,
+        players: publicPlayers(room),
+      };
+      snapshot.myAnswer = player.lastAnswer;
+    }
+
+    if (room.state === 'answer_reveal') {
+      const q = room.quiz.questions[room.currentQ];
+      snapshot.answerReveal = {
+        correctIndex: q.correct,
+        players: publicPlayers(room),
+      };
+      snapshot.myAnswer = player.lastAnswer;
+    }
+
+    if (room.state === 'reveal') {
+      snapshot.leaderboard = publicPlayers(room);
+    }
+
+    if (room.state === 'finished') {
+      snapshot.leaderboard = publicPlayers(room);
+    }
+
+    cb(snapshot);
+    io.to(code).emit('lobby_update', {
+      players: publicPlayers(room),
+      hostId: room.hostId,
+    });
   });
 
-    socket.on('disconnect', () => {
+  socket.on('disconnect', () => {
     console.log('❌ disconnected:', socket.id);
     const playerId = socket.data.playerId;
     const roomCode = socket.data.roomCode;
@@ -115,25 +165,54 @@ io.on('connection', socket => {
     const p = room.players.get(playerId);
     if (!p) return;
 
-    // Небольшая задержка — даём новому сокету время подключиться
+    const disconnectedAt = Date.now();
+
     setTimeout(() => {
-      // Проверяем, есть ли ещё активные сокеты этого игрока
       let stillConnected = false;
       for (const [, s] of io.of('/').sockets) {
-        if (s.data.playerId === playerId && s.data.roomCode === roomCode) {
+        if (
+          s.data.playerId === playerId &&
+          s.data.roomCode === roomCode &&
+          s.data.connectedAt > disconnectedAt
+        ) {
           stillConnected = true;
           break;
         }
       }
 
       if (stillConnected) {
-        console.log('ℹ️ у игрока ещё есть активный сокет — оставляем online');
+        console.log('ℹ️ у игрока новый активный сокет — оставляем online');
         return;
       }
 
       p.connected = false;
-      io.to(room.code).emit('lobby_update', [...room.players.values()]);
-    }, 1500);
+      io.to(room.code).emit('lobby_update', {
+        players: publicPlayers(room),
+        hostId: room.hostId,
+      });
+
+      // Если отключился хост — через 5 секунд передаём хоста другому
+      if (room.hostId === playerId) {
+        setTimeout(() => {
+          const roomNow = getRoom(roomCode);
+          if (!roomNow) return;
+
+          const host = roomNow.players.get(roomNow.hostId);
+          if (host && host.connected) return;
+
+          const candidate = [...roomNow.players.values()].find(x => x.connected);
+          if (candidate) {
+            roomNow.hostId = candidate.id;
+            console.log('👑 хост передан:', candidate.name);
+            io.to(roomNow.code).emit('host_changed', { hostId: candidate.id });
+            io.to(roomNow.code).emit('lobby_update', {
+              players: publicPlayers(roomNow),
+              hostId: roomNow.hostId,
+            });
+          }
+        }, 5 * 1000);
+      }
+    }, 15 * 1000);
   });
 });
 

@@ -26,6 +26,18 @@ function shuffle(arr) {
   return copy;
 }
 
+function publicPlayers(room) {
+  return [...room.players.values()]
+    .map(p => ({
+      id: p.id,
+      name: p.name,
+      score: p.score,
+      connected: p.connected,
+      streak: p.streak,
+    }))
+    .sort((a, b) => b.score - a.score);
+}
+
 function createRoom(hostId, hostName, quizId) {
   const code = genCode();
   const baseQuiz = quizzes.find(q => q.id === quizId) || quizzes[0];
@@ -52,6 +64,7 @@ function createRoom(hostId, hostName, quizId) {
   const room = {
     code,
     hostId,
+    createdAt: Date.now(),
     quiz,
     players: new Map([
       [hostId, {
@@ -92,7 +105,7 @@ function joinRoom(code, playerId, name) {
     lastAnswer: null,
   });
 
-  return { ok: true, players: [...room.players.values()], state: room.state };
+  return { ok: true, players: publicPlayers(room), state: room.state };
 }
 
 function startGame(code, byId, io) {
@@ -112,16 +125,14 @@ function emitQuestion(room, io) {
 
   [...room.players.values()].forEach(p => (p.lastAnswer = null));
 
-   io.to(room.code).emit('question', {
+  io.to(room.code).emit('question', {
     index: room.currentQ,
     total: room.quiz.questions.length,
     text: q.text,
     image: q.image || null,
     options: q.options,
     timeLimit: QUESTION_TIME,
-    players: [...room.players.values()]
-      .map(p => ({ id: p.id, name: p.name, score: p.score }))
-      .sort((a, b) => b.score - a.score),
+    players: publicPlayers(room),
   });
 
   clearTimeout(room.timer);
@@ -157,9 +168,7 @@ function submitAnswer(code, playerId, optionIndex, io) {
     name: player.name,
     points,
     correct,
-    players: [...room.players.values()]
-      .map(p => ({ id: p.id, name: p.name, score: p.score }))
-      .sort((a, b) => b.score - a.score),
+    players: publicPlayers(room),
   });
 }
 
@@ -169,21 +178,17 @@ function revealAnswer(room, io) {
   const q = room.quiz.questions[room.currentQ];
 
   // ─── Фаза 1: показываем правильный ответ 5 секунд ───
-   room.state = 'answer_reveal';
+  room.state = 'answer_reveal';
   io.to(room.code).emit('answer_reveal', {
     correctIndex: q.correct,
-    players: [...room.players.values()]
-      .map(p => ({ id: p.id, name: p.name, score: p.score }))
-      .sort((a, b) => b.score - a.score),
+    players: publicPlayers(room),
   });
 
   room.timer = setTimeout(() => {
     // ─── Фаза 2: показываем лидерборд 4 секунды ───
     room.state = 'reveal';
 
-    const leaderboard = [...room.players.values()]
-      .map(p => ({ id: p.id, name: p.name, score: p.score, streak: p.streak }))
-      .sort((a, b) => b.score - a.score);
+    const leaderboard = publicPlayers(room);
 
     io.to(room.code).emit('reveal', {
       correctIndex: q.correct,
@@ -217,12 +222,30 @@ function resetRoom(code, byId, io) {
     p.lastAnswer = null;
   });
 
-  io.to(code).emit('back_to_lobby', [...room.players.values()]);
+  io.to(code).emit('back_to_lobby', publicPlayers(room));
 }
 
 function getRoom(code) {
   return rooms.get(code);
 }
+
+// ─── Автоочистка старых комнат ────────────────────
+const ROOM_TTL = 60 * 60 * 1000; // 1 час
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [code, room] of rooms.entries()) {
+    const allOffline = [...room.players.values()].every(p => !p.connected);
+    const finished = room.state === 'finished';
+    const tooOld = room.createdAt && now - room.createdAt > ROOM_TTL;
+
+    if ((finished || allOffline) && tooOld) {
+      clearTimeout(room.timer);
+      rooms.delete(code);
+      console.log('🧹 удалена комната', code);
+    }
+  }
+}, 10 * 60 * 1000); // раз в 10 минут
 
 module.exports = {
   createRoom,
@@ -231,5 +254,7 @@ module.exports = {
   submitAnswer,
   resetRoom,
   getRoom,
+  publicPlayers,
   rooms,
+  QUESTION_TIME,
 };
